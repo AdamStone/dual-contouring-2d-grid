@@ -1,0 +1,48 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <script type="text/javascript">
+      window.onerror = function(msg, url, line, col, error) {
+        document.getElementById('error-message').innerText = `${msg } : ${line}`
+      }
+    </script>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+        background: #111;
+        text-align: center;
+        -webkit-user-select: none;
+      }
+      .helper {
+        display: inline-block;
+        height: 100%;
+        vertical-align: middle;
+      }
+      #canvas-container {
+        height: 100%;
+      }
+      #error-message {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        text-align: center;
+        padding: 30px;
+        color: white;
+      }
+      canvas {
+        cursor: crosshair;
+        transform: translateY(-50%);
+        position: relative;
+        top: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas-container" class="frame"></div>
+    <div id="error-message"></div>
+
+    <script src="bundle.js"></script>
+  </body>
+</html>
