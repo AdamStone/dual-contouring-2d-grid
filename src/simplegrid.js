@@ -56,7 +56,7 @@ class SimpleGrid {
     let { points, origin, resolution } = this
 
     this.points = points = points.map((v, ij) => {
-      return surface.getIndex(...this.getXY(ij)).value
+      return surface.getIndex(...this.getXY(ij))
     })
   }
 
@@ -77,17 +77,22 @@ class SimpleGrid {
         let err = resolution  // length of iteration step
         // iteratively get position of surface crossing
         let sxy = [...xy]
-        let value, gradX, gradY, sign
+        let value, sign
         while (err > MAX_ERR) {
-          ({ value, gradX, gradY } = surface.getIndex(...sxy))
+          value = surface.getIndex(...sxy)
           err /= 2
           sign = value === v2 ? -1 : 1
           sxy = add(sxy, multiply(step, sign * err))
         }
+        // estimate normals by finite difference
+        let d = .01
+        let dx = surface.get(...add(sxy, [d, 0])) - surface.get(...add(sxy, [-d, 0]))
+        let dy = surface.get(...add(sxy, [0, d])) - surface.get(...add(sxy, [0, -d]))
+
         return {
           origin: xy,
           intercept: subtract(sxy, xy),
-          normal: normalize([gradX, gradY])
+          normal: normalize([dx, dy])
         }
       }
       return 0
@@ -149,21 +154,28 @@ class SimpleGrid {
         to the mean point is chosen.) */
         let b = rel.map(edge => multiply(edge.normal, subtract(edge.intercept, m)))
 
-        // pseudoinverse
+        // pseudoinverse  P = (AT A)^-1 AT
         let P = pinv(A)
+
+        // xls = Pb
         let leastSqPosition = multiply(P, b).toArray()  // still relative to mean
         let relativeToCell = add(leastSqPosition, m)  // make relative to cell origin
 
         // if any coordinates landed outside the cell, surface crosses a grid point -
-        // just use the mean position
+        // just use the mean position as the vertex position
         if (_.some(relativeToCell, (p) => p < 0 || p > resolution)) {
+          leastSqPosition = [0, 0] // relative to mean
           relativeToCell = m
         }
+
+        // r = Ax - b
+        let residual = subtract(multiply(A, leastSqPosition), b).toArray()
 
         return {
           edges,
           origin: xy,
-          vertex: relativeToCell
+          vertex: relativeToCell,
+          residual
         }
       }
       return 0
@@ -196,14 +208,9 @@ class SimpleGrid {
     })
   }
 
-  drawGrid() {
-    // just the grid (not the mesh)
-    this.drawEdges()
-    this.drawPoints()
-    this.drawCells()
-  }
 
   drawPoints() {
+    // just the points (not mesh or grid)
     let { origin, resolution } = this
     this.points.forEach((solid, ij) => {
       let xy = this.getXY(ij)
@@ -215,9 +222,15 @@ class SimpleGrid {
     })
   }
 
+  drawGrid() {
+    // just the grid (not the mesh)
+    this.drawEdges()
+    this.drawCells()
+  }
+
   drawEdges() {
-    let uniformColor = 25
-    let transitionColor = 50
+    let uniformColor = 15
+    let transitionColor = 30
     let intersectionColor = 255
     let normalColor = color(0, 200, 200)
     let { origin, resolution } = this
@@ -266,6 +279,16 @@ class SimpleGrid {
     this.faces.forEach((face) => {
       line(...face[0], ...face[1])
     })
+
+//    this.cells.forEach((cell, ij) => {
+//      if (cell) {
+//        // residuals
+//        stroke(color(200,0,0))
+//        noFill()
+//        let p = add(cell.origin, cell.vertex)
+//        ellipse(...p, ...multiply(cell.residual, 1e15))
+//      }
+//    })
   }
 }
 

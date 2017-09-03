@@ -4,20 +4,21 @@ window.p5 = p5
 import math from 'mathjs'
 window.math = math
 
-import Surface from './surface'
+import Planetoid from './planetoid'
 import SimpleGrid from './simplegrid'
+import QuadTree from './quadtree'
+import {Circle} from './surface'
 
 import { add, subtract, multiply, divide, square, sqrt,
      sum, mean, matrix, zeros, transpose, inv } from 'mathjs'
 
-
 // grid
-const WIDTH = 500
+const WIDTH = 512
 const HEIGHT = WIDTH
-const RESOLUTION = 25
+const RESOLUTION = WIDTH / 64
 
 // circle
-const RADIUS = 150
+const RADIUS = 125
 
 
 let mouseOrigin
@@ -28,36 +29,30 @@ window.mouseReleased = () => {
   mouseOrigin = null
 }
 
-let toggleGrid = true
+let toggleGrid = 2
 window.keyPressed = (e) => {
-  if (e.keyCode === 71) {  // g
-    toggleGrid = !toggleGrid
+  switch(e.keyCode) {
+    case 71:
+      toggleGrid = toggleGrid === 1 ? 0 : 1
+      break
+    case 81:
+      toggleGrid = toggleGrid === 2 ? 0 : 2
   }
 }
 
-let grid, surface
-let circleOrigin = [WIDTH / 2, HEIGHT / 2]
-let circleGenerator = (origin, r0) => {
-  return (x, y) => {
-    let [x0, y0] = origin
-    let [X, Y] = [x-x0, y-y0]
+let grid, surface, quadTree
+let surfaceOrigin = [WIDTH / 2, HEIGHT / 2 + 40]
 
-    let value = X*X + Y*Y - r0*r0  // distance field
-    let gradX = 2*X
-    let gradY = 2*Y
-
-    return { value, gradX, gradY }
-  }
-}
 
 window.setup = () => {
-  let canvas = createCanvas(WIDTH, HEIGHT)
+  let canvas = createCanvas(WIDTH+1, HEIGHT+1)
   canvas.parent('canvas-container')
 
-  surface = new Surface( circleGenerator(circleOrigin, RADIUS) )
+  surface = new Planetoid(surfaceOrigin, RADIUS, WIDTH, HEIGHT)
   grid = new SimpleGrid(WIDTH, RESOLUTION)
   grid.addSurface(surface)
   grid.generateMesh()
+  quadTree = QuadTree.fromGrid(grid)
 }
 
 window.draw = () => {
@@ -66,17 +61,23 @@ window.draw = () => {
     // just reinitialize everything to move the circle
     let mouseNow = [mouseX, mouseY]
     let mouseDelta = subtract(mouseNow, mouseOrigin)
-    circleOrigin[0] += mouseDelta[0]
-    circleOrigin[1] += mouseDelta[1]
+    surfaceOrigin[0] += mouseDelta[0]
+    surfaceOrigin[1] += mouseDelta[1]
     mouseOrigin = mouseNow
 
     grid = new SimpleGrid(WIDTH, RESOLUTION)
     grid.addSurface(surface)
     grid.generateMesh()
+    quadTree = QuadTree.fromGrid(grid)
   }
 
-  if (toggleGrid) {
+  surface.draw()
+
+  if (toggleGrid === 1) {
     grid.drawGrid()
+  }
+  if (toggleGrid === 2) {
+    quadTree.drawNodes()
   }
 
   grid.drawMesh()
@@ -85,10 +86,11 @@ window.draw = () => {
 
   textSize(22)
   fill(120)
-  text('Dual contouring on a 2D grid', 10, 25)
+  text('Dual contouring in 2D', 10, 25)
 
   textSize(16)
-  fill(50)
-  text('Click and drag to move,', 10, 50)
-  text('Press G to toggle grid', 10, 75)
+  fill(75)
+  text('Click and drag to move', 10, 50)
+  text('Press G to toggle grid', 10, 100)
+  text('Press Q to toggle quadtree', 10, 75)
 }

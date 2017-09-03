@@ -1,37 +1,44 @@
 
 class Surface {
-  constructor(generator, index = 1) {
-    this.generator = generator
+  constructor(generator, origin, radius, width, height, index = 1) {
+    this.generator = generator(origin, radius)
+    this.origin = origin
+    this.radius = radius
     this.index = index
+    this.width = width
+    this.height = height
   }
 
-  getDistance(x, y) {
+  get(x, y) {
     return this.generator(x, y)
   }
 
   getIndex(x, y) {
-    let { value, gradX, gradY } = this.getDistance(x, y)
-    return {
-      value: value < 0 ? this.index : 0,
-      gradX,
-      gradY
-    }
-  }
-
-  draw(x0, y0, dx, dy) {
-    if (!this.img) {
-      let img = this.img = createImage(dx, dy)
-      img.loadPixels()
-      for (let i = 0; i < img.width; i++) {
-        for (let j = 0; j < img.height; j++) {
-          let { value } = this.getIndex(x0 + i, y0 + j)
-          img.set(i, j, value > 0 ? color(15) : color(0))
-        }
-      }
-      img.updatePixels()
-    }
-    image(this.img, 0, 0, dx, dy)
+    return this.get(x, y) < 0 ? this.index : 0
   }
 }
 
+let circleGenerator = (origin, r0) => {
+  return (x, y) => {
+    let [x0, y0] = origin
+    let [X, Y] = [x-x0, y-y0]
+
+    let value = (X*X + Y*Y - r0*r0)
+
+    return value
+  }
+}
+class Circle extends Surface {
+  constructor(origin, radius, width, height, index = 1) {
+    super (circleGenerator, origin, radius, width, height, index)
+  }
+
+  draw() {
+    noFill()
+    stroke(100)
+    ellipse(...this.origin, this.radius * 2, this.radius * 2)
+  }
+}
+
+export {Circle}
 export default Surface
